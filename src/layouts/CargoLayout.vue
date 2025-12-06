@@ -41,7 +41,7 @@ const { doLogout } = useAuth();
 
 function onLogout() {
   doLogout();
-  router.push('/cargo-login');
+  router.push('/login');
 }
 </script>
 

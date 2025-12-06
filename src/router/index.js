@@ -4,6 +4,7 @@ import CargoLogin from '@/views/CargoLogin.vue';
 import AlarmsView from '@/views/AlarmsView.vue';
 import ConciliatonView from '@/views/ConciliatonView.vue';
 import { isAuthenticated } from '@/services/authService.js';
+import CatalogView from '@/views/CatalogView.vue';
 
 const routes = [
   { path: '/', redirect: '/monitoring' },
@@ -11,6 +12,7 @@ const routes = [
   { path: '/login', component: CargoLogin },
   { path: '/alarms', component: AlarmsView, meta: { requiresAuth: true } },
   { path: '/conciliacion', component: ConciliatonView, meta: { requiresAuth: true } },
+  { path: '/catalog', component: CatalogView, meta: { requiresAuth: true } }
 ];
 
 const router = createRouter({

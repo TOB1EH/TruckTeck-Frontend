@@ -95,20 +95,18 @@
   </v-container>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted } from 'vue';
-import { getFinalizedOrders, getConciliation } from '@/services/conciliationService';
+import { getFinalizedOrders, getConciliation } from '@/services/conciliationService.js';
 
-type OrderOption = { number: string; label: string };
-
-const orderOptions = ref<OrderOption[]>([]);
-const selected = ref<string | null>(null);
-const conciliation = ref<null | Awaited<ReturnType<typeof getConciliation>>>(null);
+const orderOptions = ref([]);
+const selected = ref(null);
+const conciliation = ref(null);
 
 onMounted(async () => {
   const list = await getFinalizedOrders();
   // list now returns objects { number, label } (service mock)
-  orderOptions.value = list.map((o: any) => ({ number: o.number, label: o.label }));
+  orderOptions.value = list.map(o => ({ number: o.number, label: o.label }));
 });
 
 async function onConsult() {
