@@ -10,13 +10,14 @@
               <div class="caption">Administración y monitoreo en tiempo real de las órdenes</div>
             </div>
 
-            <div class="d-flex gap-3 align-center">
+            <div class="d-flex align-center" style="gap: 26px;">
               <v-text-field
                 v-model="q"
                 placeholder="Buscar orden o camión..."
                 density="comfortable"
                 prepend-inner-icon="mdi-magnify"
                 hide-details
+                style="width: 240px;"
               />
               <v-select
                 v-model="statusFilter"
@@ -97,5 +98,8 @@ async function acceptAlarm(payload) {
   border: 1px solid rgba(255,255,255,0.04);
   color: #fff;
 }
-h4 { color: #fff; margin: 0; }
+h4 { 
+  color: #fff; 
+  margin: 0;
+}
 </style>

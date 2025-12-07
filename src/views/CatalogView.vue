@@ -36,6 +36,7 @@
           :headers="currentHeaders"
           hide-default-footer
           dense
+          class="catalog-table"
         >
           <template #item.license="{ item }">
             <div class="accent">{{ item.license }}</div>
@@ -105,7 +106,7 @@ const currentHeaders = computed(() => {
       { title: 'Nombre', key: 'name' },
       { title: 'Licencia', key: 'license' },
       { title: 'Teléfono', key: 'phone' },
-    ].map(h => ({ text: h.title, value: h.key }));
+    ];
   }
   if (selected.value === 'trucks') {
     return [
@@ -113,7 +114,7 @@ const currentHeaders = computed(() => {
       { title: 'Placa', key: 'plate' },
       { title: 'Capacidad (kg)', key: 'capacity' },
       { title: 'Marca', key: 'brand' },
-    ].map(h => ({ text: h.title, value: h.key }));
+    ];
   }
   if (selected.value === 'products') {
     return [
@@ -121,7 +122,7 @@ const currentHeaders = computed(() => {
       { title: 'Nombre', key: 'name' },
       { title: 'Código', key: 'code' },
       { title: 'Tipo', key: 'type' },
-    ].map(h => ({ text: h.title, value: h.key }));
+    ];
   }
   // clients
   return [
@@ -129,7 +130,7 @@ const currentHeaders = computed(() => {
     { title: 'Nombre', key: 'name' },
     { title: 'Código', key: 'code' },
     { title: 'Dirección', key: 'address' },
-  ].map(h => ({ text: h.title, value: h.key }));
+  ];
 });
 
 function formatNumber(n) {
@@ -140,7 +141,12 @@ function formatNumber(n) {
 
 <style scoped>
 h2 { color: #fff; }
-.monitoring-card { background: rgba(8,16,26,0.6); color: #fff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); }
+.monitoring-card { 
+  background: rgba(8,16,26,0.6); 
+  color: #fff; 
+  border-radius: 12px; 
+  border: 1px solid rgba(255,255,255,0.04); 
+}
 .caption { color: rgba(255,255,255,0.65); }
 .muted { color: rgba(255,255,255,0.45); }
 .tab-btn {
@@ -152,6 +158,40 @@ h2 { color: #fff; }
 .tab-btn.active { color: white !important; }
 .accent { color: #ffb94d; font-weight: 700; }
 .chip-purple { background: #9b51e0; color: #fff; font-weight: 600; }
-.v-data-table th { color: rgba(255,255,255,0.7); }
-.v-data-table td { color: rgba(255,255,255,0.9); }
+
+/* Estilos para hacer la tabla oscura/transparente */
+.catalog-table {
+  background: transparent !important;
+}
+
+.catalog-table :deep(.v-data-table__wrapper) {
+  background: transparent;
+}
+
+.catalog-table :deep(table) {
+  background: transparent;
+}
+
+.catalog-table :deep(thead) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.catalog-table :deep(tbody tr) {
+  background: transparent !important;
+}
+
+.catalog-table :deep(tbody tr:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.catalog-table :deep(th) {
+  color: rgba(255,255,255,0.7) !important;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.catalog-table :deep(td) {
+  color: rgba(255,255,255,0.9) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
 </style>

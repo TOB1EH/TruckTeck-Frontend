@@ -87,10 +87,54 @@ function humanETA(mins) {
 </script>
 
 <style scoped>
+/* Hacer la tabla transparente/oscura */
 .orders-table {
   color: #fff;
+  background: transparent !important;
 }
-.order-number { color: #ffb94d; font-weight: 700; }
-.muted { color: rgba(255,255,255,0.35) }
-.caption { color: rgba(255,255,255,0.6) }
+
+/* Fondo oscuro para los elementos de la tabla */
+.orders-table :deep(.v-data-table__wrapper) {
+  background: transparent;
+}
+
+.orders-table :deep(table) {
+  background: transparent;
+}
+
+.orders-table :deep(thead) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.orders-table :deep(tbody tr) {
+  background: transparent !important;
+}
+
+.orders-table :deep(tbody tr:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.orders-table :deep(th) {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.orders-table :deep(td) {
+  color: #fff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.order-number { 
+  color: #ffb94d; 
+  font-weight: 700; 
+}
+
+.muted { 
+  color: rgba(255,255,255,0.35) 
+}
+
+.caption { 
+  color: rgba(255,255,255,0.6) 
+}
 </style>

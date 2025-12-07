@@ -5,7 +5,7 @@
 
     <!-- Pending alarms -->
     <v-card class="pa-4 mb-6 monitoring-card" elevation="6">
-  <div class="d-flex align-center justify-space-between mb-4">
+      <div class="d-flex align-center justify-space-between mb-4">
         <div>
           <h4 class="mb-1">Alarmas Pendientes</h4>
           <div class="caption">Alarmas generadas por órdenes en proceso. Acepta para registrar quien atendió la alarma.</div>
@@ -54,25 +54,25 @@
 
       <div v-if="!(accepted && accepted.value && accepted.value.length) || accepted.value.length === 0" class="py-8 text-center muted">No hay alarmas aceptadas</div>
 
-      <v-list v-else two-line>
+      <v-list v-else lines="two" class="accepted-list">
         <v-list-item v-for="a in (accepted && accepted.value) || []" :key="a.id">
-          <v-list-item-content>
-            <v-list-item-title class="font-weight-medium">{{ a.title }} — {{ a.orderNumber }}</v-list-item-title>
-            <v-list-item-subtitle>
-              Aceptada por <strong>{{ a.handledBy }}</strong> el {{ formatDate(a.handledAt) }}
-              <div v-if="a.observation" class="mt-1 muted">Observación: {{ a.observation }}</div>
-            </v-list-item-subtitle>
-          </v-list-item-content>
+          <v-list-item-title class="font-weight-medium">
+            {{ a.title }} — {{ a.orderNumber }}
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            Aceptada por <strong>{{ a.handledBy }}</strong> el {{ formatDate(a.handledAt) }}
+            <div v-if="a.observation" class="mt-1 muted">Observación: {{ a.observation }}</div>
+          </v-list-item-subtitle>
         </v-list-item>
       </v-list>
     </v-card>
 
     <!-- Accept dialog -->
     <v-dialog v-model="dialog" width="560" persistent>
-      <v-card>
+      <v-card class="dialog-card">
         <v-card-title class="d-flex justify-space-between align-center">
           <div>
-            <div class="headline">Aceptar Alarma</div>
+            <div class="text-h5">Aceptar Alarma</div>
             <div class="caption">{{ selected?.title }}</div>
           </div>
           <v-btn icon @click="closeDialog"><v-icon>mdi-close</v-icon></v-btn>
@@ -91,14 +91,14 @@
             placeholder="Ingresa una observación sobre esta alarma..."
             rows="4"
             auto-grow
-            outlined
-            dense
+            variant="outlined"
+            density="compact"
           />
         </v-card-text>
 
         <v-card-actions class="justify-end">
-          <v-btn text @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="orange" dark :loading="loading" @click="confirmAccept">Confirmar Aceptación</v-btn>
+          <v-btn variant="text" @click="closeDialog">Cancelar</v-btn>
+          <v-btn color="orange" :loading="loading" @click="confirmAccept">Confirmar Aceptación</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -165,7 +165,12 @@ function formatDate(iso) {
 
 <style scoped>
 h2 { color: #fff; }
-.monitoring-card { background: rgba(8,16,26,0.6); color: #fff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); }
+.monitoring-card { 
+  background: rgba(8,16,26,0.6); 
+  color: #fff; 
+  border-radius: 12px; 
+  border: 1px solid rgba(255,255,255,0.04); 
+}
 .caption { color: rgba(255,255,255,0.65); }
 .muted { color: rgba(255,255,255,0.45); }
 .alarm-card {
@@ -174,5 +179,32 @@ h2 { color: #fff; }
   background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.02));
 }
 .order-link { color: #ffb94d; font-weight: 700; text-decoration: none; }
-.v-dialog .v-card { background: rgba(6,12,20,0.9); color: #fff; }
+
+/* Estilos para el diálogo */
+.dialog-card { 
+  background: rgba(6,12,20,0.95) !important; 
+  color: #fff; 
+}
+
+/* Estilos para la lista de alarmas aceptadas */
+.accepted-list {
+  background: transparent !important;
+}
+
+.accepted-list :deep(.v-list-item) {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.accepted-list :deep(.v-list-item:hover) {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.accepted-list :deep(.v-list-item-title) {
+  color: #fff !important;
+}
+
+.accepted-list :deep(.v-list-item-subtitle) {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
 </style>
