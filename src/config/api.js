@@ -27,8 +27,8 @@ export const API_ENDPOINTS = {
     conciliationPdf: (number) => `/orders/number/${number}/conciliation/pdf`,
   },
   auth: {
-    login: '/auth/login',
-    logout: '/auth/logout',
+    login: '/login',
+    // Falta implementar en backend -> logout: '/logout',
   },
   catalogs: {
     base: '/catalogs',
