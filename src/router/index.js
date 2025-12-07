@@ -22,7 +22,7 @@ const router = createRouter({
 });
 
 
-/* router.beforeEach((to, from, next) => {
+router.beforeEach((to, from, next) => {
   const isAuth = isAuthenticated();
   if (to.meta.requiresAuth && !isAuth) {
     next({ path: '/login', query: { redirect: to.fullPath } });
@@ -31,6 +31,6 @@ const router = createRouter({
   } else {
     next();
   }
-}); */
+});
 
 export default router;

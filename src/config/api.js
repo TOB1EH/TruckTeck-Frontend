@@ -29,7 +29,8 @@ export const API_ENDPOINTS = {
   },
   auth: {
     login: '/login',
-    logout: '/logout',
+
+    // Falta implementar en backend -> logout: '/logout',
   },
   catalogs: {
     base: '/catalogs',
