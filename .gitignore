@@ -39,3 +39,6 @@ coverage
 
 # Vitest
 __screenshots__/
+
+
+CORS_FIX_BACKEND
