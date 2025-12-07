@@ -13,11 +13,12 @@ export const API_CONFIG = {
   headers: {
     'Content-Type': 'application/json',
   },
-  credentials: 'include', // Para enviar cookies si es necesario
+  credentials: 'include', // Habilitado - coincide con allowCredentials(true) del backend
 };
 
 /**
  * Endpoints de la API organizados por módulo
+ * La versión /v1 está incluida en API_BASE_URL
  */
 export const API_ENDPOINTS = {
   orders: {
@@ -27,8 +28,8 @@ export const API_ENDPOINTS = {
     conciliationPdf: (number) => `/orders/number/${number}/conciliation/pdf`,
   },
   auth: {
-    login: '/auth/login',
-    logout: '/auth/logout',
+    login: '/login',
+    logout: '/logout',
   },
   catalogs: {
     base: '/catalogs',
