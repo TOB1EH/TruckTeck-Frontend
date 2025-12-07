@@ -1,35 +1,79 @@
-// Mock conciliation service (JS)
+/**
+ * Servicio de Conciliación
+ * Conecta con el backend para obtener datos de conciliación de órdenes finalizadas.
+ */
 
-const FINALIZED = [
-  { number: 'ORD-2024-003', truck: 'CAM-103', label: 'ORD-2024-003 - CAM-103' },
-  { number: 'ORD-2024-005', truck: 'CAM-110', label: 'ORD-2024-005 - CAM-110' }
-];
+import { get, downloadFile } from '@/services/httpClient.js';
+import { API_ENDPOINTS } from '@/config/api.js';
 
-function delay(ms = 200) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
+/**
+ * Obtiene la lista de órdenes finalizadas disponibles para conciliación.
+ * 
+ * @returns {Promise<Array>} Lista de órdenes con formato { number, label, truck }
+ */
 export async function getFinalizedOrders() {
-  await delay(120);
-  return FINALIZED.map(x => ({ ...x }));
+  try {
+    // Obtener todas las órdenes
+    const orders = await get(`${API_ENDPOINTS.orders.base}`);
+    
+    // Filtrar solo las órdenes con estado FINALIZED
+    const finalizedOrders = orders.filter(order => 
+      order.status === 'FINALIZED' || order.state === 'FINALIZED'
+    );
+    
+    // Transformar al formato esperado por el frontend
+    return finalizedOrders.map(order => ({
+      number: order.number,
+      truck: order.truck?.plate || order.truckPlate || 'N/A',
+      label: `${order.number}`
+    }));
+  } catch (error) {
+    console.error('Error al obtener órdenes finalizadas:', error);
+    throw new Error('No se pudieron cargar las órdenes finalizadas');
+  }
 }
 
+/**
+ * Obtiene los datos de conciliación de una orden específica.
+ * 
+ * @param {string} number - Número de la orden
+ * @returns {Promise<Object>} Objeto con los datos de conciliación
+ */
 export async function getConciliation(number) {
-  await delay(280);
-  const entry = FINALIZED.find(f => f.number === number) ?? { number, truck: 'CAM-XXX' };
-  const presetKg = number === 'ORD-2024-003' ? 28000 : 25000;
-  const finalKg = number === 'ORD-2024-003' ? 36500 : presetKg + 200;
-  const netKg = Math.max(0, (finalKg ?? presetKg) - 8500);
-  const differenceKg = Math.round((Math.random() - 0.5) * 90 + 45);
-  return {
-    number: entry.number,
-    truck: entry.truck,
-    presetKg,
-    finalKg,
-    netKg,
-    differenceKg,
-    temperatureC: +(17 + Math.random() * 2.5).toFixed(1),
-    density: +(0.82 + Math.random() * 0.015).toFixed(3),
-    avgFlowKgPerHour: Math.round(10000 + Math.random() * 3000)
-  };
+  try {
+    const conciliation = await get(API_ENDPOINTS.orders.conciliation(number));
+    
+    // Mapear los campos del backend a los esperados por el frontend
+    return {
+      number: conciliation.number,
+      truck: conciliation.truck || conciliation.truckPlate,
+      presetKg: parseFloat((conciliation.initialWeight || 0).toFixed(3)),
+      finalKg: parseFloat((conciliation.finalWeight || 0).toFixed(3)),
+      accumulatedMassKg: parseFloat((conciliation.accumulatedMass || 0).toFixed(3)),
+      netKg: parseFloat((conciliation.netWeight || 0).toFixed(3)),
+      differenceKg: parseFloat((conciliation.differenceWeight || 0).toFixed(3)),
+      temperatureC: parseFloat((conciliation.averageTemperature || 0).toFixed(3)),
+      density: parseFloat((conciliation.averageDensity || 0).toFixed(3)),
+      avgFlowKgPerHour: parseFloat((conciliation.averageCaudal || 0).toFixed(3))
+    };
+  } catch (error) {
+    console.error('Error al obtener conciliación:', error);
+    throw new Error(`No se pudo obtener la conciliación de la orden ${number}`);
+  }
+}
+
+/**
+ * Descarga el PDF de conciliación de una orden.
+ * 
+ * @param {string} number - Número de la orden
+ * @returns {Promise<void>}
+ */
+export async function downloadConciliationPdf(number) {
+  try {
+    const filename = `Conciliacion_${number}.pdf`;
+    await downloadFile(API_ENDPOINTS.orders.conciliationPdf(number), filename);
+  } catch (error) {
+    console.error('Error al descargar PDF:', error);
+    throw new Error(`No se pudo descargar el PDF de la orden ${number}`);
+  }
 }
