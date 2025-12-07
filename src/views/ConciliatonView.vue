@@ -26,6 +26,11 @@
           </div>
         </div>
 
+        <!-- Mensaje de error general -->
+        <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4" closable @click:close="errorMessage = null">
+          {{ errorMessage }}
+        </v-alert>
+
         <!-- Fila que contiene el selector de orden y el botón de consulta -->
         <v-row>
           <v-col cols="12" md="9">
@@ -43,6 +48,8 @@
               density="compact"
               hide-details
               clearable
+              :loading="loadingOrders"
+              :disabled="loadingOrders"
               class="dark-select"
             />
           </v-col>
@@ -52,7 +59,14 @@
               Se desactiva automáticamente si no hay una orden seleccionada.
             -->
           <v-col cols="12" md="3" class="d-flex align-center">
-            <v-btn color="orange" :disabled="!selected" @click="onConsult">Consultar</v-btn>
+            <v-btn 
+              color="orange" 
+              :disabled="!selected || loading" 
+              :loading="loading"
+              @click="onConsult"
+            >
+              Consultar
+            </v-btn>
           </v-col>
         </v-row>
 
@@ -72,8 +86,22 @@
             <div class="caption">Resultado de conciliación</div>
           </div>
 
-          <!-- Chip indicando que la orden está finalizada -->
-          <v-chip color="green" size="small" text-color="white">FINALIZADA</v-chip>
+          <div class="d-flex align-center gap-2">
+            <!-- Botón para descargar PDF -->
+            <v-btn
+              color="blue"
+              size="small"
+              :loading="downloadingPdf"
+              :disabled="downloadingPdf"
+              @click="onDownloadPdf"
+              prepend-icon="mdi-file-pdf-box"
+            >
+              Descargar PDF
+            </v-btn>
+            
+            <!-- Chip indicando que la orden está finalizada -->
+            <v-chip color="green" size="small" text-color="white">FINALIZADA</v-chip>
+          </div>
         </div>
 
         <!--
@@ -102,6 +130,14 @@
             <v-card class="metric-card pa-4" elevation="0">
               <div class="metric-title"><v-icon class="me-2" color="green darken-2">mdi-scale-bathroom</v-icon> Peso Final</div>
               <div class="metric-value">{{ conciliation.finalKg?.toLocaleString() }} kg</div>
+            </v-card>
+          </v-col>
+
+          <!-- Masa Acumulada -->
+          <v-col cols="12" md="3">
+            <v-card class="metric-card pa-4" elevation="0">
+              <div class="metric-title"><v-icon class="me-2" color="cyan darken-2">mdi-sigma</v-icon> Masa Acumulada</div>
+              <div class="metric-value">{{ conciliation.accumulatedMassKg?.toLocaleString() }} kg</div>
             </v-card>
           </v-col>
 
@@ -159,7 +195,7 @@
   - Consulta de conciliación según la orden elegida.
   */
   import { ref, onMounted } from 'vue';
-  import { getFinalizedOrders, getConciliation } from '@/services/conciliationService.js';
+  import { getFinalizedOrders, getConciliation, downloadConciliationPdf } from '@/services/conciliationService.js';
   import CargoLayout from '@/layouts/CargoLayout.vue';
 
 
@@ -172,15 +208,32 @@
   /* Resultado de conciliación para la orden consultada */
   const conciliation = ref(null);
 
+  /* Estado de carga */
+  const loading = ref(false);
+  const loadingOrders = ref(false);
+  const downloadingPdf = ref(false);
+
+  /* Mensajes de error */
+  const errorMessage = ref(null);
+
   /*
   Al montar el componente:
   - Se consultan las órdenes finalizadas.
   - Se transforman en objetos { number, label } aptos para usar en v-select.
   */
   onMounted(async () => {
-    const list = await getFinalizedOrders();
-    // list now returns objects { number, label } (service mock)
-    orderOptions.value = list.map(o => ({ number: o.number, label: o.label }));
+    loadingOrders.value = true;
+    errorMessage.value = null;
+    
+    try {
+      const list = await getFinalizedOrders();
+      orderOptions.value = list;
+    } catch (error) {
+      console.error('Error al cargar órdenes:', error);
+      errorMessage.value = error.message || 'Error al cargar las órdenes finalizadas';
+    } finally {
+      loadingOrders.value = false;
+    }
   });
 
   /*
@@ -192,8 +245,44 @@
   */
   async function onConsult() {
     if (!selected.value) return;
+    
+    loading.value = true;
+    errorMessage.value = null;
     conciliation.value = null;
-    conciliation.value = await getConciliation(selected.value);
+    
+    try {
+      conciliation.value = await getConciliation(selected.value);
+    } catch (error) {
+      console.error('Error al consultar conciliación:', error);
+      errorMessage.value = error.message || 'Error al obtener la conciliación';
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /*
+  Descarga el PDF de conciliación de la orden actual.
+  */
+  async function onDownloadPdf() {
+    // Usar el número de la conciliación o el seleccionado como fallback
+    const orderNumber = conciliation.value?.number || selected.value;
+    
+    if (!orderNumber) {
+      errorMessage.value = 'No se puede descargar el PDF: orden no identificada';
+      return;
+    }
+    
+    downloadingPdf.value = true;
+    errorMessage.value = null;
+    
+    try {
+      await downloadConciliationPdf(orderNumber);
+    } catch (error) {
+      console.error('Error al descargar PDF:', error);
+      errorMessage.value = error.message || 'Error al descargar el PDF';
+    } finally {
+      downloadingPdf.value = false;
+    }
   }
 </script>
 
