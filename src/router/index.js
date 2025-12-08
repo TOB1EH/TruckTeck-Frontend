@@ -5,10 +5,12 @@ import AlarmsView from '@/views/AlarmsView.vue';
 import ConciliatonView from '@/views/ConciliatonView.vue';
 import { isAuthenticated } from '@/services/authService.js';
 import CatalogView from '@/views/CatalogView.vue';
+import LoadView from '@/views/LoadView.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/monitoring', component: MonitoringView, meta: { requiresAuth: true } },
+  { path: '/load', component: LoadView, meta: { requiresAuth: true } },
   { path: '/login', component: CargoLogin },
   { path: '/alarms', component: AlarmsView, meta: { requiresAuth: true } },
   { path: '/conciliacion', component: ConciliatonView, meta: { requiresAuth: true } },

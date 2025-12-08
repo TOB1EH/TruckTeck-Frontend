@@ -113,6 +113,7 @@ function onLogout() {
 */
 const nav = [
   { to: '/monitoring', label: 'Monitoreo', icon: 'mdi-monitor' },
+  { to: '/load', label: 'Carga', icon: 'mdi-truck-cargo-container' },
   { to: '/catalog', label: 'Catálogo', icon: 'mdi-format-list-bulleted' },
   { to: '/alarms', label: 'Alarmas', icon: 'mdi-alert-circle' },
   { to: '/conciliacion', label: 'Conciliación', icon: 'mdi-scale-bathroom' }
