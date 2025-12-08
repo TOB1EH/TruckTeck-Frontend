@@ -9,7 +9,17 @@
     <v-container>
 
     <!-- Título principal de la vista -->
-    <h2 class="mb-4">Alarmas</h2>
+    <div class="d-flex align-center justify-space-between mb-4">
+      <h2 class="ma-0">Alarmas</h2>
+      <v-icon 
+        style="margin-right: 0.4rem;"
+        color="grey-lighten-1" 
+        class="cursor-pointer" 
+        @click="openConfig"
+        title="Configurar alarmas">
+        mdi-cog
+      </v-icon>
+    </div>
 
     <!-- ========================================================= -->
     <!-- BLOQUE 1 — ALARMAS PENDIENTES                            -->
@@ -22,10 +32,10 @@
         </div>
 
         <!--
-          Badge que muestra la cantidad de alarmas pendientes.
-          Solo se renderiza si existe al menos una alarma.
+          Icono de configuración y Badge de alarmas pendientes
         -->
-        <v-badge :content="pending.length" color="red" v-if="pending.length > 0" />
+        
+          <v-badge :content="pending.length" color="red" v-if="pending.length > 0" />
       </div>
 
       <!-- Mensaje cuando NO hay alarmas pendientes -->
@@ -141,6 +151,59 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- ========================================================= -->
+    <!-- DIÁLOGO PARA CONFIGURAR ALARMAS                          -->
+    <!-- ========================================================= -->
+    <v-dialog v-model="configDialog" width="560" persistent>
+      <v-card class="dialog-card">
+        <!-- Cabecera del cuadro de diálogo -->
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div>
+            <div class="text-h5">Configuración de Alarmas</div>
+            <div class="caption">Ajustar umbral de temperatura y emails</div>
+          </div>
+          <v-btn icon @click="closeConfigDialog"><v-icon>mdi-close</v-icon></v-btn>
+        </v-card-title>
+
+        <!-- Contenido principal -->
+        <v-card-text>
+          <!-- Campo para umbral de temperatura -->
+          <v-text-field
+            v-model.number="configThreshold"
+            label="Umbral de temperatura (°C)"
+            type="number"
+            step="0.1"
+            variant="outlined"
+            class="mb-4"
+            :rules="[v => !!v || 'El umbral es requerido']"
+          />
+
+          <!-- Campo para emails separados por comas -->
+          <v-textarea
+            v-model="configEmails"
+            label="Emails (separados por comas)"
+            variant="outlined"
+            placeholder="&#10;ejemplo1@mail.com, ejemplo2@mail.com"
+            rows="3"
+            :rules="[
+              v => !!v || 'Debe ingresar al menos un email',
+              v => validateEmails(v)
+            ]"
+          />
+
+          <div class="caption">
+            Los emails ingresados recibirán notificaciones cuando se genere una alarma.
+          </div>
+        </v-card-text>
+
+        <!-- Acciones del popup -->
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="closeConfigDialog">Cancelar</v-btn>
+          <v-btn color="primary" :loading="configLoading" @click="confirmConfig">Guardar Configuración</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     </v-container>
   </cargo-layout>
 </template>
@@ -162,14 +225,21 @@
   - accepted: lista de alarmas aceptadas
   - load(): carga ambas listas desde el backend
   - accept(): acepta una alarma
+  - updateConfig(): actualiza configuración global
   */
-  const { pending, accepted, load, accept } = useAlarms();
+  const { pending, accepted, load, accept, updateConfig } = useAlarms();
 
-  /* Estado del diálogo y variables de trabajo */
+  /* Estado del diálogo de aceptación y variables de trabajo */
   const dialog = ref(false);
   const selected = ref(null);
   const observation = ref('');
   const loading = ref(false);
+
+  /* Estado del diálogo de configuración */
+  const configDialog = ref(false);
+  const configThreshold = ref('');
+  const configEmails = ref('');
+  const configLoading = ref(false);
 
   /* Usuario autenticado */
   const { user } = useAuth();
@@ -240,6 +310,86 @@
     const d = new Date(iso);
     return d.toLocaleString();
   }
+
+  /*
+    Abre el diálogo de configuración de alarmas.
+  */
+  function openConfig() {
+    configDialog.value = true;
+  }
+
+  /*
+    Cierra el diálogo de configuración.
+  */
+  function closeConfigDialog() {
+    configDialog.value = false;
+  }
+
+  /*
+    Valida que los emails estén bien formados y separados por coma.
+    Acepta un email o múltiples emails separados por comas.
+  */
+  function validateEmails(emailString) {
+    if (!emailString || emailString.trim().length === 0) {
+      return 'Debe ingresar al menos un email';
+    }
+
+    // Regex más permisivo pero que valida formato básico de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    // Separar por comas y limpiar espacios
+    const emails = emailString
+      .split(',')
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+
+    // Validar que haya al menos un email
+    if (emails.length === 0) {
+      return 'Debe ingresar al menos un email válido';
+    }
+
+    // Validar cada email
+    for (const email of emails) {
+      if (!emailRegex.test(email)) {
+        return `"${email}" no es un email válido. Formato esperado: usuario@dominio.com`;
+      }
+    }
+
+    // Si todo es válido
+    return true;
+  }
+
+  /*
+    Envía al backend la actualización de configuración (umbral y emails).
+  */
+  async function confirmConfig() {
+    configLoading.value = true;
+    try {
+      // Convertir string de emails separados por comas a array
+      const emailsArray = configEmails.value
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      if (emailsArray.length === 0) {
+        alert('Debe ingresar al menos un email');
+        return;
+      }
+
+      await updateConfig({
+        threshold: parseFloat(configThreshold.value),
+        emails: emailsArray
+      });
+
+      alert('Configuración actualizada exitosamente');
+      closeConfigDialog();
+    } catch (e) {
+      console.error(e);
+      alert('Error actualizando la configuración');
+    } finally {
+      configLoading.value = false;
+    }
+  }
 </script>
 
 <style scoped>
@@ -257,6 +407,11 @@
   /* Colores secundarios */
   .caption { color: rgba(255,255,255,0.65); }
   .muted { color: rgba(255,255,255,0.45); }
+
+  /* Gap para elementos flex */
+  .gap-3 {
+    gap: 12px;
+  }
 
   /* Tarjeta individual de alarma pendiente */
   .alarm-card {
@@ -297,6 +452,10 @@
 
   .titleAlert {
     color: white;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
   }
 
   :deep(.btnAlarm) {

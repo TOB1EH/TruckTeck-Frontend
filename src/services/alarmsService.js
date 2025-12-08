@@ -72,3 +72,17 @@ export async function acceptAlarm(id, { user, observation } = {}) {
     throw error;
   }
 }
+
+/**
+ * Actualiza la configuración global de alarmas (umbral y emails)
+ * PUT /api/v1/alarm
+ */
+export async function updateAlarmConfig({ threshold, emails }) {
+  try {
+    await put(API_ENDPOINTS.alarms.config, { threshold, emails });
+    return { ok: true };
+  } catch (error) {
+    console.error('Error updating alarm config:', error);
+    throw error;
+  }
+}
