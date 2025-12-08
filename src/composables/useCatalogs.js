@@ -1,73 +1,87 @@
-// Mock catalog service (JavaScript) - devuelve conductores, camiones, productos y clientes
+/**
+ * Módulo de gestión de catálogos.
+ * 
+ * Proporciona estados reactivos que contienen listas de:
+ * - Conductores
+ * - Camiones
+ * - Productos
+ * - Clientes
+ *
+ * El módulo centraliza la carga inicial de todos los catálogos mediante
+ * un único método asíncrono (`load()`), facilitando su uso desde cualquier
+ * componente Vue que requiera estos datos.
+ */
+
 import { ref } from 'vue';
+import {
+  fetchDrivers,
+  fetchTrucks,
+  fetchProducts,
+  fetchClients
+} from '@/services/catalogService.js';
 
-function delay(ms = 160) {
-  return new Promise(r => setTimeout(r, ms));
-}
+/**
+ * Lista reactiva de conductores.
+ * @type {import('vue').Ref<Array>}
+ */
+export const drivers = ref([]);
 
-const DRIVERS = [
-  { id: 1, name: 'Juan Pérez', license: 'A1234567', phone: '+54 11 1234-5678' },
-  { id: 2, name: 'María González', license: 'B7654321', phone: '+54 11 8765-4321' },
-  { id: 3, name: 'Carlos Rodríguez', license: 'C9876543', phone: '+54 11 9876-5432' }
-];
+/**
+ * Lista reactiva de camiones.
+ * @type {import('vue').Ref<Array>}
+ */
+export const trucks = ref([]);
 
-const TRUCKS = [
-  { id: 1, plate: 'CAM-101', capacity: 30000, brand: 'Mercedes-Benz' },
-  { id: 2, plate: 'CAM-102', capacity: 28000, brand: 'Scania' },
-  { id: 3, plate: 'CAM-103', capacity: 32000, brand: 'Volvo' },
-  { id: 4, plate: 'CAM-104', capacity: 25000, brand: 'Iveco' }
-];
+/**
+ * Lista reactiva de productos.
+ * @type {import('vue').Ref<Array>}
+ */
+export const products = ref([]);
 
-const PRODUCTS = [
-  { id: 1, name: 'Diesel Premium', code: 'PROD-001', type: 'Combustible' },
-  { id: 2, name: 'Gasolina Super', code: 'PROD-002', type: 'Combustible' },
-  { id: 3, name: 'Nafta Premium', code: 'PROD-003', type: 'Combustible' },
-  { id: 4, name: 'Kerosene', code: 'PROD-004', type: 'Combustible' }
-];
+/**
+ * Lista reactiva de clientes.
+ * @type {import('vue').Ref<Array>}
+ */
+export const clients = ref([]);
 
-const CLIENTS = [
-  { id: 1, name: 'Estación de Servicio Norte', code: 'CLI-001', address: 'Av. Principal 123' },
-  { id: 2, name: 'Distribuidora Central', code: 'CLI-002', address: 'Calle Comercio 456' },
-  { id: 3, name: 'Transporte Sur SA', code: 'CLI-003', address: 'Ruta 9 Km 78' }
-];
-
-// Simple getters (keep them if other code imports them directly)
-export async function getDrivers() {
-  await delay(180);
-  return JSON.parse(JSON.stringify(DRIVERS));
-}
-
-export async function getTrucks() {
-  await delay(140);
-  return JSON.parse(JSON.stringify(TRUCKS));
-}
-
-export async function getProducts() {
-  await delay(140);
-  return JSON.parse(JSON.stringify(PRODUCTS));
-}
-
-export async function getClients() {
-  await delay(120);
-  return JSON.parse(JSON.stringify(CLIENTS));
-}
-
-// Composable helper (expected by views) — returns refs and a load() method
-const drivers = ref([]);
-const trucks = ref([]);
-const products = ref([]);
-const clients = ref([]);
-
+/**
+ * Hook composable que expone los catálogos y la función para cargarlos.
+ *
+ * @returns {{
+ *   drivers: import('vue').Ref<Array>,
+ *   trucks: import('vue').Ref<Array>,
+ *   products: import('vue').Ref<Array>,
+ *   clients: import('vue').Ref<Array>,
+ *   load: Function
+ * }}
+ *  Objeto que contiene los estados reactivos y el método de carga.
+ */
 export function useCatalogs() {
+  /**
+   * Carga todos los catálogos en paralelo mediante `Promise.all`.
+   * 
+   * En caso de error, se muestra un log en consola y se asignan
+   * listas vacías para evitar estados inconsistentes.
+   *
+   * @returns {Promise<void>}
+   */
   async function load() {
     try {
-      const [d, t, p, c] = await Promise.all([getDrivers(), getTrucks(), getProducts(), getClients()]);
+      const [d, t, p, c] = await Promise.all([
+        fetchDrivers(),
+        fetchTrucks(),
+        fetchProducts(),
+        fetchClients()
+      ]);
+
       drivers.value = d;
       trucks.value = t;
       products.value = p;
       clients.value = c;
     } catch (e) {
       console.error('Error loading catalogs', e);
+
+      // Restablecer estados para evitar información parcial
       drivers.value = [];
       trucks.value = [];
       products.value = [];
