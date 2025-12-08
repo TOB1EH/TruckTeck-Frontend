@@ -1,64 +1,74 @@
-// Simple in-memory mock alarms service (JS)
+/**
+ * Servicio de alarmas - Backend real
+ * Conecta con /api/v1/alarm/list para obtener alarmas
+ * y con /api/v1/alarm/reset-email/{id} para aceptarlas
+ */
 
-let nextId = 3;
+import { get, put } from '@/services/httpClient.js';
+import { API_ENDPOINTS } from '@/config/api.js';
 
-const PENDING = [
-  {
-    id: 1,
-    title: 'Temperatura fuera de rango: 24.5°C',
-    description: 'Temperatura por encima del umbral permitido durante la carga.',
-    orderNumber: 'ORD-2024-001',
-    at: new Date().toISOString()
-  },
-  {
-    id: 2,
-    title: 'Temperatura crítica: 26.8°C',
-    description: 'Temperatura crítica detectada en la línea de carga.',
-    orderNumber: 'ORD-2024-004',
-    at: new Date().toISOString()
+/**
+ * Mapea una alarma del backend al formato del frontend
+ * Backend devuelve en camelCase: alarmState, currentTemperature, eventDateTime, orderNumber, thresholdTemperature
+ */
+function mapAlarm(a) {
+  return {
+    id: a.id,
+    alarmState: a.alarmState, // true = pendiente, false = aceptada
+    currentTemperature: a.currentTemperature,
+    eventDateTime: a.eventDateTime,
+    orderNumber: a.orderNumber,
+    thresholdTemperature: a.thresholdTemperature,
+    // Campos derivados para UI
+    title: `Temperatura fuera de rango: ${a.currentTemperature}°C`,
+    description: `Umbral: ${a.thresholdTemperature}°C`,
+  };
+}
+
+/**
+ * Obtiene todas las alarmas del backend
+ */
+export async function getAllAlarms() {
+  try {
+    const list = await get(API_ENDPOINTS.alarms.list);
+    console.log('Raw alarms from backend:', list);
+    return Array.isArray(list) ? list.map(mapAlarm) : [];
+  } catch (error) {
+    console.error('Error fetching alarms:', error);
+    return [];
   }
-];
-
-const ACCEPTED = [];
-
-function delay(ms = 300) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Obtiene alarmas pendientes (alarmState = true)
+ */
 export async function getPendingAlarms() {
-  await delay(200);
-  return JSON.parse(JSON.stringify(PENDING));
+  const all = await getAllAlarms();
+  const pending = all.filter(a => a.alarmState === true);
+  console.log('Filtered pending alarms:', pending);
+  return pending;
 }
 
+/**
+ * Obtiene alarmas aceptadas (alarmState = false)
+ */
 export async function getAcceptedAlarms() {
-  await delay(120);
-  return JSON.parse(JSON.stringify(ACCEPTED));
+  const all = await getAllAlarms();
+  const accepted = all.filter(a => a.alarmState === false);
+  console.log('Filtered accepted alarms:', accepted);
+  return accepted;
 }
 
-export async function acceptAlarm(id, data) {
-  await delay(240);
-  const idx = PENDING.findIndex(p => p.id === id);
-  if (idx === -1) throw new Error('Alarma no encontrada');
-  const alarm = PENDING.splice(idx, 1)[0];
-  const record = {
-    ...alarm,
-    handledBy: data.user,
-    handledAt: new Date().toISOString(),
-    observation: data.observation
-  };
-  ACCEPTED.unshift(record);
-  return record;
-}
-
-export async function createPendingAlarm(payload) {
-  await delay(80);
-  const a = {
-    id: ++nextId,
-    title: payload.title ?? 'Nueva alarma',
-    description: payload.description ?? '',
-    orderNumber: payload.orderNumber ?? 'ORD-XXXX-XXX',
-    at: new Date().toISOString()
-  };
-  PENDING.push(a);
-  return a;
+/**
+ * Acepta una alarma (cambia estado de true a false)
+ * PUT /api/v1/alarm/reset-email/{id}
+ */
+export async function acceptAlarm(id, { user, observation } = {}) {
+  try {
+    await put(API_ENDPOINTS.alarms.accept(id));
+    return { id, ok: true, user, observation };
+  } catch (error) {
+    console.error('Error accepting alarm:', error);
+    throw error;
+  }
 }

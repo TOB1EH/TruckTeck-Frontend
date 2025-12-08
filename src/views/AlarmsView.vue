@@ -25,11 +25,11 @@
           Badge que muestra la cantidad de alarmas pendientes.
           Solo se renderiza si existe al menos una alarma.
         -->
-        <v-badge :content="(pending && pending.value && pending.value.length) || 0" color="red" v-if="(pending && pending.value && pending.value.length) > 0" />
+        <v-badge :content="pending.length" color="red" v-if="pending.length > 0" />
       </div>
 
       <!-- Mensaje cuando NO hay alarmas pendientes -->
-      <div v-if="!(pending && pending.value && pending.value.length) || pending.value.length === 0">
+      <div v-if="pending.length === 0">
         <v-alert type="info">No hay alarmas pendientes.</v-alert>
       </div>
 
@@ -39,14 +39,14 @@
           Iteración de cada alarma pendiente.
           Cada alarma se renderiza como una tarjeta independiente.
         -->
-        <v-col cols="12" v-for="a in (pending && pending.value) || []" :key="a.id">
+        <v-col cols="12" v-for="a in pending" :key="a.id">
           <v-sheet class="alarm-card pa-4 d-flex align-center justify-space-between">
             <div>
 
               <!-- Título e icono de alerta -->
               <div class="d-flex align-center mb-2">
                 <v-icon color="red" class="me-2">mdi-alert-circle</v-icon>
-                <div class="font-weight-medium">{{ a.title }}</div>
+                <div class="font-weight-medium titleAlert">{{ a.title }}</div>
               </div>
               
               <!-- Información contextual: número de orden y fecha -->
@@ -54,16 +54,16 @@
                 Orden: <strong class="order-link">{{ a.orderNumber }}</strong>
                 <span class="mx-2">•</span>
                 <v-icon small class="me-1">mdi-clock-outline</v-icon>
-                {{ formatDate(a.at) }}
+                {{ formatDate(a.eventDateTime) }}
               </div>
 
-              <!-- Descripción de la alarma -->
-              <div class="muted">{{ a.description }}</div>
+              <!-- Descripción de la alarma con temperaturas -->
+              <div class="muted">Temp. actual: {{ a.currentTemperature }}°C — Umbral: {{ a.thresholdTemperature }}°C</div>
             </div>
 
             <!-- Botón para aceptar la alarma -->
             <div class="d-flex flex-column align-end" style="min-width:140px;">
-              <v-btn color="orange" dark @click="openAccept(a)">Aceptar</v-btn>
+              <v-btn class="btnAlarm" color="orange" dark @click="openAccept(a)">Aceptar</v-btn>
             </div>
 
           </v-sheet>
@@ -83,26 +83,26 @@
         </div>
 
         <!-- Badge con el total de alarmas aceptadas -->        
-        <v-badge :content="(accepted && accepted.value && accepted.value.length) || 0" color="green" v-if="(accepted && accepted.value && accepted.value.length) > 0" />
+        <v-badge :content="accepted.length" color="green" v-if="accepted.length > 0" />
 
       </div>
 
       <!-- Si no hay alarmas aceptadas -->
-      <div v-if="!(accepted && accepted.value && accepted.value.length) || accepted.value.length === 0" class="py-8 text-center muted">No hay alarmas aceptadas</div>
+      <div v-if="accepted.length === 0" class="py-8 text-center muted">No hay alarmas aceptadas</div>
 
       <!-- Listado de alarmas ya aceptadas -->
       <v-list v-else lines="two" class="accepted-list">
-        <v-list-item v-for="a in (accepted && accepted.value) || []" :key="a.id">
+        <v-list-item v-for="a in accepted" :key="a.id">
           <v-list-item-title class="font-weight-medium">
             {{ a.title }} — {{ a.orderNumber }}
           </v-list-item-title>
 
           <!-- Detalles de la aceptación -->
           <v-list-item-subtitle>
-            Aceptada por <strong>{{ a.handledBy }}</strong> el {{ formatDate(a.handledAt) }}
-
-            <!-- Observación opcional -->
-            <div v-if="a.observation" class="mt-1 muted">Observación: {{ a.observation }}</div>
+            Aceptada
+            <div class="mt-1 muted">
+              Temp: {{ a.currentTemperature }}°C — Umbral: {{ a.thresholdTemperature }}°C — Fecha: {{ formatDate(a.eventDateTime) }}
+            </div>
           </v-list-item-subtitle>
         </v-list-item>
       </v-list>
@@ -127,19 +127,11 @@
           <div class="mb-3">
             <strong>Orden:</strong> <span class="order-link">{{ selected?.orderNumber }}</span>
             <span class="mx-2">•</span>
-            <small class="muted">{{ formatDate(selected?.at) }}</small>
+            <small class="muted">{{ formatDate(selected?.eventDateTime) }}</small>
           </div>
-
-          <!-- Campo para ingresar observación opcional -->
-          <v-textarea
-            v-model="observation"
-            label="Observación (opcional)"
-            placeholder="Ingresa una observación sobre esta alarma..."
-            rows="4"
-            auto-grow
-            variant="outlined"
-            density="compact"
-          />
+          <div class="muted">
+            ¿Está seguro que desea aceptar esta alarma?
+          </div>
         </v-card-text>
 
         <!-- Acciones del popup -->
@@ -159,10 +151,9 @@
   Utiliza composables para obtener las alarmas pendientes/aceptadas,
   y gestionar autenticación y servicios asociados.
   */
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, onUnmounted } from 'vue';
   import { useAlarms } from '@/composables/useAlarms.js';
   import { useAuth } from '@/composables/useAuth.js';
-  import * as service from '@/services/alarmsService.js';
   import CargoLayout from '@/layouts/CargoLayout.vue';
 
   /* 
@@ -170,8 +161,9 @@
   - pending: lista de alarmas pendientes
   - accepted: lista de alarmas aceptadas
   - load(): carga ambas listas desde el backend
+  - accept(): acepta una alarma
   */
-  const { pending, accepted, load } = useAlarms();
+  const { pending, accepted, load, accept } = useAlarms();
 
   /* Estado del diálogo y variables de trabajo */
   const dialog = ref(false);
@@ -182,9 +174,23 @@
   /* Usuario autenticado */
   const { user } = useAuth();
 
+  /* Intervalo para recargar alarmas cada 10 segundos */
+  let intervalId = null;
+
   /* Cargar alarmas al montar la vista */
   onMounted(() => {
-    load();
+    load(); // Carga inicial
+    // Configurar intervalo de 10 segundos
+    intervalId = setInterval(() => {
+      load();
+    }, 10000); // 10000 ms = 10 segundos
+  });
+
+  /* Limpiar intervalo al desmontar el componente */
+  onUnmounted(() => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
   });
 
   /*
@@ -213,16 +219,11 @@
     if (!selected.value) return;
     loading.value = true;
     try {
-
-      await service.acceptAlarm(selected.value.id, {
+      await accept(selected.value.id, {
         user: user.value?.username ?? 'anonymous',
         observation: observation.value || undefined
       });
-      
-      // Recargar datos tras aceptar la alarma
-      await load();
       closeDialog();
-
     } catch (e) {
       console.error(e);
       alert('Error aceptando la alarma');
@@ -292,5 +293,19 @@
 
   .accepted-list :deep(.v-list-item-subtitle) {
     color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .titleAlert {
+    color: white;
+  }
+
+  :deep(.btnAlarm) {
+  transition: background-color 0.25s ease, transform 0.2s ease;
+  }
+
+  :deep(.btnAlarm:hover) {
+    background-color: #d46f00 !important; /* tono más oscuro del naranja */
+    transform: scale(1.04);               /* pequeño aumento visual */
+    cursor: pointer;
   }
 </style>
