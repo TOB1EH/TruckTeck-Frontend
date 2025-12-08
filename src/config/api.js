@@ -43,6 +43,7 @@ export const API_ENDPOINTS = {
     clients: '/clients',
   },
   alarms: {
-    base: '/alarms',
+    list: '/alarm/list',
+    accept: (id) => `/alarm/reset-email/${id}`,
   },
 };
