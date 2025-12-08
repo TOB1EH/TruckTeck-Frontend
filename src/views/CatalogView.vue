@@ -53,9 +53,10 @@
         <!-- Tabla que muestra ítems según la pestaña seleccionada -->
         <v-data-table
           :items="currentItems"                         
-          :headers="currentHeadersWithActions"          
-          hide-default-footer                           
-          dense
+          :headers="currentHeadersWithActions"
+          :items-per-page="itemsPerPage"
+          v-model:page="page"
+          density="compact"
           class="catalog-table"
         >
 
@@ -257,7 +258,7 @@
    * Script principal del componente Catálogo de Entidades.
    * Gestiona pestañas, tablas, diálogos CRUD y vinculación con los catálogos globales.
    */
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import CargoLayout from '@/layouts/CargoLayout.vue';
 import { useCatalogs, drivers, trucks, products, clients } from '@/composables/useCatalogs.js';
 import {
@@ -289,6 +290,12 @@ const tabs = [
 const selected = ref('drivers');
 
 /**
+ * Paginación (mismo comportamiento que en Monitoring: footer por defecto, 10 items/pg)
+ */
+const page = ref(1);
+const itemsPerPage = ref(10);
+
+/**
  * Hook que provee función de carga y catálogos reactivos globales.
  */
 const { load } = useCatalogs();
@@ -312,6 +319,33 @@ const currentItems = computed(() => {
   if (selected.value === 'trucks') return trucks.value;
   if (selected.value === 'products') return products.value;
   return clients.value;
+});
+
+/**
+ * Resetear página al cambiar de pestaña o cuando cambia el listado
+ * para evitar quedar en una página fuera de rango.
+ */
+ /**
+ * Observa el valor `selected` (pestaña o categoría actual).
+ * Cada vez que cambia, reinicia la paginación a la página 1.
+ * Esto asegura que al cambiar de pestaña no se conserve una página
+ * que podría no existir en la nueva colección de elementos.
+ */
+watch(selected, () => { page.value = 1; });
+
+/**
+ * Observa la lista de elementos actualmente visibles (`currentItems`).
+ * Cada vez que la lista cambia:
+ *  - Calcula la cantidad total de ítems.
+ *  - Determina cuántas páginas son necesarias según `itemsPerPage`.
+ *  - Ajusta la página actual si está fuera del rango permitido.
+ * Este mecanismo previene inconsistencias en la vista, como quedar
+ * en una página inexistente después de un filtro, búsqueda o cambio de datos.
+ */
+watch(currentItems, (list) => {
+  const total = list?.length ?? 0;
+  const maxPage = Math.max(1, Math.ceil(total / itemsPerPage.value));
+  if (page.value > maxPage) page.value = maxPage;
 });
 
 /**
@@ -624,90 +658,34 @@ h2 { color: #fff; }
   border-bottom: 1px solid rgba(255,255,255,0.05) !important;
 }
 
-/* ========================================
- * ESTILOS MEJORADOS PARA EL DIÁLOGO
- * ======================================== */
-
-/* Tarjeta del diálogo: fondo oscuro azulado semi-transparente */
-.dialog-card {
-  background: rgba(12, 24, 40, 0.95) !important;
-  color: #fff;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+/* Footer de paginación (alineado al estilo usado en Monitoring/Orders para mantener consistencia en el estilo de 
+la pagina web completa) */
+.catalog-table :deep(.v-data-table-footer) {
+  background: rgba(255,255,255,0.02);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 16px;
 }
 
-/* Encabezado del diálogo con borde inferior sutil */
-.dialog-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+.catalog-table :deep(.v-data-table-footer .v-select),
+.catalog-table :deep(.v-data-table-footer .v-select__selection),
+.catalog-table :deep(.v-data-table-footer .v-pagination),
+.catalog-table :deep(.v-data-table-footer .v-pagination__item),
+.catalog-table :deep(.v-data-table-footer .v-pagination__navigation),
+.catalog-table :deep(.v-data-table-footer .v-icon),
+.catalog-table :deep(.v-data-table-footer .v-data-table-footer__items-per-page),
+.catalog-table :deep(.v-data-table-footer .v-data-table-footer__info) {
+  color: #fff !important;
 }
 
-/* Título del diálogo en blanco */
-.dialog-title {
-  color: #fff;
-  font-weight: 600;
+.catalog-table :deep(.v-data-table-footer .v-pagination__item) {
+  background: rgba(255,255,255,0.05) !important;
 }
 
-/* Botón de cerrar del diálogo */
-.dialog-close-btn {
-  color: rgba(255, 255, 255, 0.7);
+.catalog-table :deep(.v-data-table-footer .v-pagination__item--active) {
+  background: rgba(255,255,255,0.15) !important;
 }
 
-.dialog-close-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Inputs oscuros del formulario */
-.dark-input :deep(.v-field) {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
-
-.dark-input :deep(.v-field__input) {
-  color: #fff;
-}
-
-.dark-input :deep(.v-field__outline) {
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.dark-input :deep(.v-label) {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.dark-input :deep(.v-field--focused .v-field__outline) {
-  color: rgba(255, 180, 77, 0.6);
-}
-
-.dark-input :deep(.v-field--focused .v-label) {
-  color: #ffb94d;
-}
-
-/* Sección de acciones del diálogo */
-.dialog-actions {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-/* Botón cancelar */
-.dialog-cancel-btn {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.dialog-cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* Botón submit con color naranja */
-.dialog-submit-btn {
-  /* background: #ff8c42; */
-  color: #fff;
-  font-weight: 600;
-}
-
-.dialog-submit-btn:hover {
-  background: #ffba8c;
+.catalog-table :deep(.v-data-table-footer .v-pagination__navigation) {
+  background: rgba(255,255,255,0.05) !important;
 }
 </style>
