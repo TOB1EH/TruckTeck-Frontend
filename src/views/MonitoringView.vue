@@ -38,13 +38,29 @@
               <!-- Ordenamiento por número de orden o ETA -->
               <v-select
                 v-model="sortBy"
-                :items="[{label:'Número', value:'number'},{label:'ETA', value:'eta'}]"
+                :items="[
+                  {label:'ID', value:'id'},
+                  {label:'Número', value:'number'},
+                  {label:'Estado', value:'status'},
+                  {label:'Temperatura', value:'lastTemp'},
+                  {label:'Densidad', value:'density'},
+                  {label:'Caudal', value:'flow'}
+                ]"
                 item-title="label"
                 item-value="value"
                 dense
                 hide-details
                 style="max-width: 160px;"
               />
+              <!-- Botón para invertir orden -->
+              <v-btn
+                :color="sortReverse ? 'orange' : 'grey'"
+                @click="sortReverse = !sortReverse"
+                icon
+                size="small"
+              >
+                <v-icon>{{ sortReverse ? 'mdi-arrow-down-thin' : 'mdi-arrow-up-thin' }}</v-icon>
+              </v-btn>
             </div>
           </div>
 
@@ -81,20 +97,23 @@ const { orders } = useOrders();
    - q: texto de búsqueda
    - statusFilter: estado para filtrar las órdenes
    - sortBy: criterio de ordenamiento
+   - sortReverse: invertir orden de clasificación
 */
 const q = ref('');
 const statusFilter = ref('Todos');
 const sortBy = ref('number');
+const sortReverse = ref(false);
 
-/* Opciones del filtro de estado */
-const statusOptions = ['Todos', 'LOADING', 'TARA_REGISTERED', 'FINALIZED'];
+/* Opciones del filtro de estado (en orden del flujo de trabajo) */
+const statusOptions = ['Todos', 'PENDING', 'TARA_REGISTERED', 'LOADING', 'FINALIZED'];
 
 /*
   Computed: lista de órdenes filtradas y ordenadas.
   Aplica en este orden:
   1) búsqueda por número o camión
   2) filtrado por estado
-  3) ordenamiento por número o ETA
+  3) ordenamiento por criterio seleccionado
+  4) inversión opcional del orden
 */
 const filtered = computed(() => {
   let list = orders.value.slice();
@@ -109,13 +128,34 @@ const filtered = computed(() => {
     list = list.filter(o => o.status === statusFilter.value);
   }
 
-  // Ordenamiento:
-  // - ETA ascendente (nulls últimos)
-  // - o número alfabético
-  if (sortBy.value === 'eta') {
-    list.sort((a,b) => (a.etaMinutes ?? 9999) - (b.etaMinutes ?? 9999));
-  } else {
-    list.sort((a,b) => a.number.localeCompare(b.number));
+  // Ordenamiento según criterio seleccionado
+  switch (sortBy.value) {
+    case 'id':
+      list.sort((a, b) => a.id - b.id);
+      break;
+    case 'status':
+      // Ordenar por el flujo de trabajo: PENDING -> TARA_REGISTERED -> LOADING -> FINALIZED
+      const statusOrder = { 'PENDING': 1, 'TARA_REGISTERED': 2, 'LOADING': 3, 'FINALIZED': 4 };
+      list.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
+      break;
+    case 'lastTemp':
+      list.sort((a, b) => (b.lastTemp || 0) - (a.lastTemp || 0));
+      break;
+    case 'density':
+      list.sort((a, b) => (b.density || 0) - (a.density || 0));
+      break;
+    case 'flow':
+      list.sort((a, b) => (b.flow || 0) - (a.flow || 0));
+      break;
+    case 'number':
+    default:
+      list.sort((a, b) => (a.number || '').localeCompare(b.number || ''));
+      break;
+  }
+
+  // Invertir orden si sortReverse está activado
+  if (sortReverse.value) {
+    list.reverse();
   }
 
   return list;
