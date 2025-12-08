@@ -15,9 +15,6 @@ export async function getOrders() {
   try {
     const orders = await get(API_ENDPOINTS.orders.base);
     
-    console.log(`📦 Órdenes recibidas del backend: ${orders.length}`);
-    console.log('📋 Datos completos:', orders);
-    
     // Mapear los datos del backend al formato esperado por el frontend
     const mapped = orders.map(order => ({
       id: order.id,
@@ -36,11 +33,8 @@ export async function getOrders() {
       // product: order.product?.name || order.productName || 'N/A'
     }));
     
-    console.log(`✅ Órdenes mapeadas: ${mapped.length}`);
-    
     return mapped;
   } catch (error) {
-    console.error('❌ Error al obtener órdenes:', error);
     throw new Error('No se pudieron cargar las órdenes');
   }
 }
@@ -100,10 +94,8 @@ export async function acceptAlarm(orderId, data) {
 export async function getOrderDetails(orderId) {
   try {
     const details = await get(`${API_ENDPOINTS.orders.base}/detail/${orderId}`);
-    console.log(`Detalles de carga obtenidos: ${details.length} registros`);
     return details;
   } catch (error) {
-    console.error('Error al obtener detalles de la orden:', error);
     throw new Error(`No se pudieron cargar los detalles de la orden ${orderId}`);
   }
 }
