@@ -7,7 +7,7 @@ import { isAuthenticated } from '@/services/authService.js';
 import CatalogView from '@/views/CatalogView.vue';
 
 const routes = [
-  { path: '/', redirect: '/monitoring' },
+  { path: '/', redirect: '/login' },
   { path: '/monitoring', component: MonitoringView, meta: { requiresAuth: true } },
   { path: '/login', component: CargoLogin },
   { path: '/alarms', component: AlarmsView, meta: { requiresAuth: true } },
@@ -27,7 +27,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !isAuth) {
     next({ path: '/login', query: { redirect: to.fullPath } });
   } else if (to.path === '/login' && isAuth) {
-    next('/');
+    next('/monitoring');
   } else {
     next();
   }
