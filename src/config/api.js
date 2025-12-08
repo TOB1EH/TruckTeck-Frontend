@@ -29,11 +29,18 @@ export const API_ENDPOINTS = {
   },
   auth: {
     login: '/login',
-
     // Falta implementar en backend -> logout: '/logout',
   },
+  // Sección de catálogos del frontend (no backend)
   catalogs: {
     base: '/catalogs',
+  },
+  // Endpoints reales por entidad en backend (según Constants.java)
+  entities: {
+    drivers: '/drivers',
+    trucks: '/trucks',
+    products: '/products',
+    clients: '/clients',
   },
   alarms: {
     base: '/alarms',
