@@ -71,7 +71,7 @@
   </v-data-table>
 
   <!-- Dialog con detalles de la orden -->
-  <v-dialog v-model="detailsDialog" max-width="1100px">
+  <v-dialog v-model="detailsDialog" max-width="1400px">
     <v-card class="order-details-card">
       <!-- Header con número de orden y estado -->
       <v-card-title class="d-flex justify-space-between align-center px-6 py-4">
@@ -325,6 +325,16 @@
             <span class="text-white">{{ formatNumber(item.caudal ? item.caudal * 60 : 0, 3) }}</span>
           </template>
         </v-data-table>
+
+        <!-- Gráficos de Evolución (para órdenes en LOADING o estados superiores) -->
+        <div v-if="selectedOrder && isLoadingOrBeyond(selectedOrder) && orderDetails.length > 0" class="mt-6">
+          <div class="section-title mb-3">
+            <v-icon small color="blue" class="mr-2">mdi-chart-line-variant</v-icon>
+            Gráficos de Evolución
+          </div>
+          
+          <LoadChartsDisplay :chart-data="processedChartData" />
+        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -332,14 +342,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { getOrderById, getOrderDetails } from '@/services/ordersService.js';
+import { useLoadMonitoring } from '@/composables/useLoadMonitoring';
+import LoadChartsDisplay from '@/components/LoadChartsDisplay.vue';
 
 /**
  * Propiedades del componente
  * - orders: lista de órdenes a mostrar en la tabla.
  */
 const props = defineProps({ orders: { type: Array, required: true } });
+
+// Usar el composable de monitoreo de cargas
+const { getOrderChartData, hasChartData } = useLoadMonitoring();
 
 /**
  * Estado para el dialog de detalles
@@ -349,6 +364,62 @@ const selectedOrder = ref(null);
 const loadingDetails = ref(false);
 const orderDetails = ref([]);
 const loadingHistory = ref(false);
+
+/**
+ * Mapeo de estados a valores numéricos para comparaciones
+ */
+const stateValues = {
+  'PENDING': 1,
+  'TARA_REGISTERED': 2,
+  'LOADING': 3,
+  'FINALIZED': 4
+}
+
+/**
+ * Verificar si la orden está en estado LOADING o superior (FINALIZED)
+ */
+function isLoadingOrBeyond(order) {
+  if (!order) return false
+  
+  const state = order.state || order.status
+  if (!state) return false
+  
+  const stateValue = stateValues[state] || 0
+  return stateValue >= 3 // LOADING (3) o FINALIZED (4)
+}
+
+/**
+ * Procesar datos del historial para los gráficos
+ * Convierte orderDetails a formato de gráficos
+ */
+const processedChartData = computed(() => {
+  if (!selectedOrder.value || orderDetails.value.length === 0) {
+    return {
+      timestamps: [],
+      accumulatedMass: [],
+      caudal: [],
+      temperature: [],
+      density: []
+    }
+  }
+
+  // Primero intentar usar datos del composable si existen
+  if (hasChartData(selectedOrder.value.id)) {
+    return getOrderChartData(selectedOrder.value.id)
+  }
+
+  // Si no hay datos del WebSocket, usar el historial de la BD
+  return {
+    timestamps: orderDetails.value.map(detail => {
+      const date = new Date(detail.timestamp)
+      return date.toLocaleTimeString('es-AR')
+    }),
+    accumulatedMass: orderDetails.value.map(detail => Number(detail.accumulatedMass) || 0),
+    caudal: orderDetails.value.map(detail => Number(detail.caudal) || 0),
+    temperature: orderDetails.value.map(detail => Number(detail.temperature) || 0),
+    density: orderDetails.value.map(detail => Number(detail.density) || 0)
+  }
+})
 
 /**
  * Abre el dialog con los detalles de una orden
@@ -363,12 +434,10 @@ async function openOrderDetails(event, { item }) {
     // Obtener datos completos de la orden desde el backend
     const fullOrder = await getOrderById(item.id);
     selectedOrder.value = fullOrder;
-    console.log('📋 Orden completa:', fullOrder);
     
     // Cargar historial de detalles en paralelo
     loadOrderHistory(item.id);
   } catch (error) {
-    console.error('❌ Error al cargar detalles de la orden:', error);
     selectedOrder.value = item; // Fallback a los datos básicos
   } finally {
     loadingDetails.value = false;
@@ -383,9 +452,7 @@ async function loadOrderHistory(orderId) {
   try {
     const details = await getOrderDetails(orderId);
     orderDetails.value = details;
-    console.log('📊 Historial de carga:', details);
   } catch (error) {
-    console.error('❌ Error al cargar historial:', error);
     orderDetails.value = [];
   } finally {
     loadingHistory.value = false;
