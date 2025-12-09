@@ -121,33 +121,66 @@
     <!-- ========================================================= -->
     <!-- DIÁLOGO PARA ACEPTAR UNA ALARMA                          -->
     <!-- ========================================================= -->
-    <v-dialog v-model="dialog" width="560" persistent>
+    <v-dialog v-model="dialog" width="600" persistent>
       <v-card class="dialog-card">
         <!-- Cabecera del cuadro de diálogo -->
         <v-card-title class="d-flex justify-space-between align-center">
           <div>
             <div class="text-h5">Aceptar Alarma</div>
-            <div class="caption">{{ selected?.title }}</div>
+            <div class="caption mt-1">Temperatura fuera de rango: {{ selected?.currentTemperature }}°C</div>
           </div>
           <v-btn icon @click="closeDialog"><v-icon>mdi-close</v-icon></v-btn>
         </v-card-title>
 
+        <v-divider></v-divider>
+
         <!-- Contenido principal -->
-        <v-card-text>
-          <div class="mb-3">
-            <strong>Orden:</strong> <span class="order-link">{{ selected?.orderNumber }}</span>
-            <span class="mx-2">•</span>
-            <small class="muted">{{ formatDate(selected?.eventDateTime) }}</small>
+        <v-card-text class="pt-4">
+          <!-- Información de la alarma -->
+          <div class="mb-4 alarm-info-section">
+            <div class="d-flex align-center mb-2">
+              <v-icon color="orange" class="me-2">mdi-alert-circle</v-icon>
+              <strong>Orden: {{ selected?.orderNumber }}</strong>
+              <span class="mx-2">•</span>
+              <small class="muted">{{ formatDate(selected?.eventDateTime) }}</small>
+            </div>
+            <div class="text-caption text-grey">
+              Umbral configurado: {{ selected?.thresholdTemperature }}°C
+            </div>
           </div>
-          <div class="muted">
+
+          <!-- Pregunta de confirmación -->
+          <div class="mb-3 text-body-2">
             ¿Está seguro que desea aceptar esta alarma?
           </div>
+
+          <!-- Label para observación -->
+          <div class="text-caption mb-2" style="color: rgba(255, 255, 255, 0.7);">
+            <strong>Observación (opcional)</strong>
+          </div>
+
+          <!-- Campo de observación -->
+          <v-textarea
+            v-model="observation"
+            placeholder="Ingresa una observación sobre esta alarma..."
+            rows="4"
+            variant="outlined"
+            counter
+            maxlength="500"
+            hint="Describe la situación o acciones tomadas"
+            persistent-placeholder
+            hide-details="auto"
+          ></v-textarea>
         </v-card-text>
 
+        <v-divider></v-divider>
+
         <!-- Acciones del popup -->
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="orange" :loading="loading" @click="confirmAccept">Confirmar Aceptación</v-btn>
+        <v-card-actions class="pa-4 justify-end">
+          <v-btn variant="outlined" @click="closeDialog" :disabled="loading">Cancelar</v-btn>
+          <v-btn color="orange" variant="flat" :loading="loading" @click="confirmAccept">
+            Confirmar Aceptación
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -224,13 +257,17 @@
 
   /* 
   useAlarms() expone:
-  - pending: lista de alarmas pendientes
-  - accepted: lista de alarmas aceptadas
+  - pendingAlarms: lista de alarmas pendientes
+  - acceptedAlarms: lista de alarmas aceptadas
   - load(): carga ambas listas desde el backend
   - accept(): acepta una alarma
   - updateConfig(): actualiza configuración global
   */
-  const { pending, accepted, load, accept, updateConfig } = useAlarms();
+  const { pendingAlarms, acceptedAlarms, load, accept, updateConfig } = useAlarms();
+  
+  // Alias para mantener compatibilidad con el template
+  const pending = pendingAlarms;
+  const accepted = acceptedAlarms;
 
   /* Estado del diálogo de aceptación y variables de trabajo */
   const dialog = ref(false);
@@ -245,7 +282,7 @@
   const configLoading = ref(false);
 
   /* Usuario autenticado */
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
 
   /* Intervalo para recargar alarmas cada 10 segundos */
   let intervalId = null;
@@ -286,20 +323,31 @@
 
   /*
     Envía al backend la aceptación de la alarma seleccionada.
-    Incluye usuario y observación opcional.
+    Incluye ID de usuario y observación opcional.
   */
   async function confirmAccept() {
     if (!selected.value) return;
+    
     loading.value = true;
     try {
-      await accept(selected.value.id, {
-        user: user.value?.username ?? 'anonymous',
-        observation: observation.value || undefined
-      });
+      // Obtener ID del usuario autenticado
+      const userId = getUserId();
+      
+      if (!userId) {
+        alert('No se pudo obtener el ID del usuario autenticado');
+        return;
+      }
+
+      // Llamar al servicio con el nuevo formato
+      await accept(selected.value.id, userId, observation.value.trim());
+      
       closeDialog();
+      
+      // Recargar alarmas después de aceptar
+      await load();
     } catch (e) {
-      console.error(e);
-      alert('Error aceptando la alarma');
+      console.error('Error aceptando la alarma:', e);
+      alert('Error aceptando la alarma: ' + (e.message || 'Error desconocido'));
     } finally {
       loading.value = false;
     }
@@ -477,5 +525,49 @@
     background-color: #d46f00 !important; /* tono más oscuro del naranja */
     transform: scale(1.04);               /* pequeño aumento visual */
     cursor: pointer;
+  }
+
+  /* Estilos para el campo de observación */
+  .alarm-info-section {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #ff9800;
+  }
+
+  :deep(.v-textarea) {
+    color: #fff;
+  }
+
+  :deep(.v-textarea .v-field) {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  :deep(.v-textarea .v-field__input) {
+    color: #fff;
+  }
+
+  :deep(.v-textarea .v-label) {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  :deep(.v-textarea .v-field__outline) {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  :deep(.v-textarea:hover .v-field__outline) {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  :deep(.v-textarea .v-field--focused .v-field__outline) {
+    color: #ff9800;
+  }
+
+  :deep(.v-textarea .v-counter) {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  :deep(.v-textarea .v-messages__message) {
+    color: rgba(255, 255, 255, 0.6);
   }
 </style>
