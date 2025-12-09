@@ -1,0 +1,101 @@
+/**
+ * Servicio de alarmas - Backend real
+ * Conecta con /api/v1/alarm/list para obtener alarmas
+ * y con /api/v1/alarm/reset-email/{id} para aceptarlas
+ */
+
+import { get, put } from '@/services/httpClient.js';
+import { API_ENDPOINTS } from '@/config/api.js';
+
+/**
+ * Mapea una alarma del backend al formato del frontend
+ * Backend devuelve en camelCase: alarmState, currentTemperature, eventDateTime, orderNumber, thresholdTemperature
+ */
+function mapAlarm(a) {
+  return {
+    id: a.id,
+    alarmState: a.alarmState, // true = pendiente, false = aceptada
+    currentTemperature: a.currentTemperature,
+    eventDateTime: a.eventDateTime,
+    orderNumber: a.orderNumber,
+    thresholdTemperature: a.thresholdTemperature,
+    // Campos derivados para UI
+    title: `Temperatura fuera de rango: ${a.currentTemperature}°C`,
+    description: `Umbral: ${a.thresholdTemperature}°C`,
+  };
+}
+
+/**
+ * Obtiene todas las alarmas del backend
+ */
+export async function getAllAlarms() {
+  try {
+    const list = await get(API_ENDPOINTS.alarms.list);
+    console.log('Raw alarms from backend:', list);
+    return Array.isArray(list) ? list.map(mapAlarm) : [];
+  } catch (error) {
+    console.error('Error fetching alarms:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene alarmas pendientes (alarmState = true)
+ */
+export async function getPendingAlarms() {
+  const all = await getAllAlarms();
+  const pending = all.filter(a => a.alarmState === true);
+  console.log('Filtered pending alarms:', pending);
+  return pending;
+}
+
+/**
+ * Obtiene alarmas aceptadas (alarmState = false)
+ */
+export async function getAcceptedAlarms() {
+  const all = await getAllAlarms();
+  const accepted = all.filter(a => a.alarmState === false);
+  console.log('Filtered accepted alarms:', accepted);
+  return accepted;
+}
+
+/**
+ * Acepta una alarma (resetea emailAlreadySent flag)
+ * PUT /api/v1/alarm/reset-email
+ * 
+ * @param {number} alarmId - ID de la alarma
+ * @param {number} userId - ID del usuario que acepta la alarma
+ * @param {string} observations - Observaciones sobre la alarma (opcional)
+ * @returns {Promise<Object>} Respuesta del backend
+ */
+export async function acceptAlarm(alarmId, userId, observations = '') {
+  try {
+    const body = {
+      id: alarmId,
+      user: {
+        idUser: userId
+      },
+      observations: observations || ''
+    };
+
+    const response = await put(API_ENDPOINTS.alarms.resetEmail, body);
+    return { ok: true, data: response };
+  } catch (error) {
+    console.error('Error accepting alarm:', error);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza la configuración global de alarmas (umbral y emails)
+ * PUT /api/v1/alarm
+ */
+export async function updateAlarmConfig({ threshold, emails }) {
+  try {
+    await put(API_ENDPOINTS.alarms.config, { threshold, emails });
+    return { ok: true };
+  } catch (error) {
+    console.error('Error updating alarm config:', error);
+    throw error;
+  }
+}
