@@ -176,7 +176,10 @@
             step="0.1"
             variant="outlined"
             class="mb-4"
-            :rules="[v => !!v || 'El umbral es requerido']"
+            :rules="[
+              v => v !== null && v !== undefined && v !== '' || 'El umbral es requerido',
+              v => v > 0 || 'El umbral debe ser mayor a 0'
+            ]"
           />
 
           <!-- Campo para emails separados por comas -->
@@ -365,6 +368,13 @@
   async function confirmConfig() {
     configLoading.value = true;
     try {
+      // Validar que el umbral esté completo
+      if (!configThreshold.value || configThreshold.value === '' || configThreshold.value <= 0) {
+        alert('Debe ingresar un umbral de temperatura válido (mayor a 0)');
+        configLoading.value = false;
+        return;
+      }
+
       // Convertir string de emails separados por comas a array
       const emailsArray = configEmails.value
         .split(',')
@@ -373,6 +383,7 @@
 
       if (emailsArray.length === 0) {
         alert('Debe ingresar al menos un email');
+        configLoading.value = false;
         return;
       }
 
