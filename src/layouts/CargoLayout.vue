@@ -37,7 +37,12 @@
               aria-label="item.label"
             >
               <v-icon left small>{{ item.icon }}</v-icon>
-              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-label" :class="{ 'has-badge': item.to === '/alarms' && pendingAlarmsCount > 0 }">
+                {{ item.label }}
+                <span v-if="item.to === '/alarms' && pendingAlarmsCount > 0" class="alarm-badge">
+                  {{ pendingAlarmsCount }}
+                </span>
+              </span>
             </v-btn>
           </v-col>
 
@@ -92,11 +97,26 @@
   */
 import { useRouter, useRoute } from 'vue-router';
 import { useAuth } from '@/composables/useAuth.js';
-import { computed } from 'vue';
+import { useAlarms } from '@/composables/useAlarms.js';
+import { computed, onMounted, onUnmounted } from 'vue';
 
 const router = useRouter();
 const route = useRoute();
 const { doLogout } = useAuth();
+const { pendingAlarms, startPolling, stopPolling } = useAlarms();
+
+// Contador de alarmas pendientes
+const pendingAlarmsCount = computed(() => pendingAlarms?.value?.length || 0);
+
+// Iniciar polling de alarmas cuando se monta el layout
+onMounted(() => {
+  startPolling();
+});
+
+// Detener polling cuando se desmonta el layout
+onUnmounted(() => {
+  stopPolling();
+});
 
 
 /*
@@ -164,6 +184,28 @@ function isActive(item) {
 
 .nav-btn .v-icon {
   opacity: 0.9;
+}
+
+/* Contenedor del label con badge */
+.nav-label.has-badge {
+  position: relative;
+}
+
+/* Badge de notificación de alarmas */
+.alarm-badge {
+  position: absolute;
+  top: -12px;
+  right: -18px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  min-width: 18px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Estilo aplicado al botón activo */
