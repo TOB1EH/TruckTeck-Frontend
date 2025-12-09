@@ -60,13 +60,26 @@ export async function getAcceptedAlarms() {
 }
 
 /**
- * Acepta una alarma (cambia estado de true a false)
- * PUT /api/v1/alarm/reset-email/{id}
+ * Acepta una alarma (resetea emailAlreadySent flag)
+ * PUT /api/v1/alarm/reset-email
+ * 
+ * @param {number} alarmId - ID de la alarma
+ * @param {number} userId - ID del usuario que acepta la alarma
+ * @param {string} observations - Observaciones sobre la alarma (opcional)
+ * @returns {Promise<Object>} Respuesta del backend
  */
-export async function acceptAlarm(id, { user, observation } = {}) {
+export async function acceptAlarm(alarmId, userId, observations = '') {
   try {
-    await put(API_ENDPOINTS.alarms.accept(id));
-    return { id, ok: true, user, observation };
+    const body = {
+      id: alarmId,
+      user: {
+        idUser: userId
+      },
+      observations: observations || ''
+    };
+
+    const response = await put(API_ENDPOINTS.alarms.resetEmail, body);
+    return { ok: true, data: response };
   } catch (error) {
     console.error('Error accepting alarm:', error);
     throw error;

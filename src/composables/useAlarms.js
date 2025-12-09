@@ -1,5 +1,10 @@
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { getPendingAlarms, getAcceptedAlarms, acceptAlarm as acceptAlarmService, updateAlarmConfig as updateConfigService } from '@/services/alarmsService.js';
+
+// Estado compartido global (singleton)
+const pending = ref([]);
+const accepted = ref([]);
+let pollingInterval = null;
 
 /**
  * Composable para gestionar alarmas del sistema.
@@ -8,25 +13,15 @@ import { getPendingAlarms, getAcceptedAlarms, acceptAlarm as acceptAlarmService,
  * la configuración de alarmas.
  *
  * @returns {Object} Objeto con estados reactivos y funciones públicas:
- * - pending {Ref<Array>}  Lista reactiva de alarmas pendientes.
- * - accepted {Ref<Array>} Lista reactiva de alarmas aceptadas.
+ * - pendingAlarms {Ref<Array>}  Lista reactiva de alarmas pendientes.
+ * - acceptedAlarms {Ref<Array>} Lista reactiva de alarmas aceptadas.
  * - load {Function}       Carga ambas listas desde el backend.
  * - accept {Function}     Acepta una alarma específica.
  * - updateConfig {Function} Actualiza parámetros de configuración.
+ * - startPolling {Function} Inicia verificación automática de alarmas.
+ * - stopPolling {Function} Detiene verificación automática.
  */
 export function useAlarms() {
-  /**
-   * Lista reactiva de alarmas pendientes.
-   * @type {import('vue').Ref<Array>}
-   */
-  const pending = ref([]);
-
-  /**
-   * Lista reactiva de alarmas aceptadas.
-   * @type {import('vue').Ref<Array>}
-   */
-  const accepted = ref([]);
-
   /**
    * Carga todas las alarmas desde el backend.
    * Obtiene las listas de alarmas pendientes y aceptadas.
@@ -50,19 +45,43 @@ export function useAlarms() {
   }
 
   /**
+   * Inicia la verificación automática de alarmas cada 30 segundos.
+   */
+  function startPolling() {
+    if (pollingInterval) return; // Ya está corriendo
+    
+    // Cargar inmediatamente
+    load();
+    
+    // Configurar polling cada 30 segundos
+    pollingInterval = setInterval(() => {
+      load();
+    }, 30000);
+  }
+
+  /**
+   * Detiene la verificación automática de alarmas.
+   */
+  function stopPolling() {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  }
+
+  /**
    * Acepta una alarma específica y recarga las listas.
    *
    * @async
-   * @param {number|string} id - ID de la alarma que se desea aceptar.
-   * @param {Object} [options] - Datos adicionales de aceptación.
-   * @param {string} [options.user] - Usuario que acepta la alarma.
-   * @param {string} [options.observation] - Observación opcional registrada.
+   * @param {number|string} alarmId - ID de la alarma que se desea aceptar.
+   * @param {number} userId - ID del usuario que acepta la alarma.
+   * @param {string} [observations=''] - Observación opcional registrada.
    * @returns {Promise<{ok: boolean}>} Resultado de la operación.
    * @throws {Error} Si ocurre un error al aceptar la alarma.
    */
-  async function accept(id, { user, observation } = {}) {
+  async function accept(alarmId, userId, observations = '') {
     try {
-      await acceptAlarmService(id, { user, observation });
+      await acceptAlarmService(alarmId, userId, observations);
       await load(); // Recargar listas después de aceptar
       return { ok: true };
     } catch (error) {
@@ -91,5 +110,13 @@ export function useAlarms() {
     }
   }
 
-  return { pending, accepted, load, accept, updateConfig };
+  return { 
+    pendingAlarms: pending, 
+    acceptedAlarms: accepted, 
+    load, 
+    accept, 
+    updateConfig,
+    startPolling,
+    stopPolling
+  };
 }
