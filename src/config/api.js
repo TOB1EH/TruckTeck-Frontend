@@ -45,5 +45,6 @@ export const API_ENDPOINTS = {
   alarms: {
     list: '/alarm/list',
     accept: (id) => `/alarm/reset-email/${id}`,
+    config: '/alarm',
   },
 };
