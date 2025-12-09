@@ -54,6 +54,43 @@ export function useAuth() {
   const isAuthenticated = computed(() => !!(user.value && user.value.token));
 
   /**
+   * Obtiene el ID del usuario autenticado desde el JWT.
+   * Decodifica el token JWT para extraer el idUser.
+   * 
+   * @returns {number|null} ID del usuario o null si no está autenticado
+   */
+  function getUserId() {
+    if (!user.value || !user.value.token) {
+      return null;
+    }
+
+    try {
+      // Decodificar JWT (formato: header.payload.signature)
+      const token = user.value.token;
+      const parts = token.split('.');
+      
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      // Decodificar el payload (segunda parte del JWT)
+      const payload = JSON.parse(atob(parts[1]));
+      
+      // El backend usa 'internalId' para almacenar el ID del usuario
+      // Probar: internalId, idUser, id, userId, user_id
+      const userId = payload.internalId || payload.idUser || payload.id || payload.userId || payload.user_id;
+      
+      if (!userId) {
+        return null;
+      }
+      
+      return typeof userId === 'number' ? userId : parseInt(userId, 10);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Ejecuta el proceso de autenticación contra el backend.
    * Recibe usuario y contraseña, delega en el servicio `authLogin`,
    * almacena el resultado y lo persiste en localStorage.
@@ -87,6 +124,7 @@ export function useAuth() {
   return {
     user,
     isAuthenticated,
+    getUserId,
     doLogin,
     doLogout
   };
