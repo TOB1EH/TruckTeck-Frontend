@@ -28,6 +28,51 @@ Tecnologías principales:
   - Umbral obligatorio antes de guardar.
 - Validaciones y feedback en la UI (mensajes, loaders).
 
+---
+
+## Estructura del proyecto
+
+```
+TruckTeck-Frontend/
+├── index.html
+├── package.json
+├── vite.config.js
+├── README.md
+├── public/                     # assets estáticos (favicon, imágenes)
+├── dist/                       # build de producción (generado)
+└── src/
+    ├── main.js                 # bootstrap de la app (Vue, Vuetify, router)
+    ├── App.vue                 # componente raíz
+    ├── config/
+    │   └── api.js              # endpoints centralizados
+    ├── router/
+    │   └── index.js            # rutas y guards
+    ├── layouts/
+    │   └── CargoLayout.vue     # layout principal (sidebar/header)
+    ├── views/
+    │   ├── AlarmsView.vue      # UI de alarmas + configuración
+    │   ├── LoadView.vue        # vistas de carga / órdenes
+    │   ├── MonitoringView.vue
+    │   ├── ConciliatonView.vue
+    │   └── CatalogView.vue
+    ├── components/
+    │   ├── AlarmPanel.vue
+    │   ├── OrdersTable.vue
+    │   └── LoadChartsDisplay.vue
+    ├── composables/
+    │   ├── useAlarms.js        # lógica reactiva de alarmas (load, accept, updateConfig)
+    │   ├── useAuth.js          # auth state + roles
+    │   ├── useOrders.js
+    │   └── useLoadMonitoring.js
+    └── services/
+        ├── httpClient.js       # wrapper fetch (headers, json, errores)
+        ├── alarmsService.js    # GET/PUT para alarmas
+        ├── ordersService.js
+        ├── authService.js
+        ├── catalogService.js
+        ├── conciliationService.js
+        └── websocketService.js # util (opcional) para tiempo real
+```
 
 ---
 
@@ -72,6 +117,8 @@ npm run build
 yarn build
 ```
 
+---
+
 ## Buenas prácticas y notas de desarrollo
 
 * Polling: la vista de alarmas usa polling cada 10s en useAlarms (puedes cambiar a WebSocket para menor latencia; ver websocketService.js).
@@ -79,20 +126,24 @@ yarn build
 * Seguridad: ocultar/mostrar controles sensibles según user.role desde useAuth. Sin embargo, la validación final de permisos debe realizarse en el backend.
 * Manejo de errores: los servicios y composables registran errores en consola y muestran alertas simples; considerar toasts para producción.
 
+---
+
 ## Contribuciones
 1. Fork del repositorio.
 2. Crear branch con tu feature/bugfix.
 3. Hacer PR describiendo cambios e impacto.
 4. Ejecutar linters/tests antes de merge.
 
+---
+
 ## Contacto
 
 Si querés reportar un bug, proponer una mejora o colaborar, contactanos por cualquiera de estos canales:
 
 - Correo electrónico del equipo:
-  - gzaragosi782@alumnos.iua.edu.ar
-  - abrambilla804@alumnos.iua.edu.ar
-  - tfunes744@alumnos.iua.edu.ar
+  - gzaragosi@gmail.com
+  - agustinbram@gmail.com
+  - tobiasfunes@hotmail.com.ar
 
 Intentaremos responder en 1–3 días hábiles. Si necesitás soporte urgente, marcá el asunto como `[Urgente]`.
 
