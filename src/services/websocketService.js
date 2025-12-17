@@ -2,7 +2,8 @@
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
-const WS_URL = 'http://localhost:8080/ws' // URL del endpoint WebSocket
+// URL del endpoint WebSocket
+const WS_URL = import.meta.env.VITE_API_BASE_URL_WS
 
 class WebSocketService {
   constructor() {

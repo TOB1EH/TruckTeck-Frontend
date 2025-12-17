@@ -53,6 +53,14 @@ function buildHeaders(customHeaders = {}) {
  * @throws {Error} Error con mensaje y status HTTP.
  */
 async function handleResponse(response) {
+
+  if (response.status === 401) {
+    // Token inválido o expirado: limpiar sesión y redirigir al login
+    localStorage.removeItem('truckteck_user');
+    window.location.href = '/login';
+    return;
+  }
+
   if (!response.ok) {
     let errorMessage = 'Error en la petición';
     let status = response.status;
